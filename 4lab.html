@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Растровые Алгоритмы</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+            margin-top: 20px;
+        }
+        canvas {
+            border: 1px solid #000;
+            margin-top: 20px;
+        }
+        .controls {
+            margin-top: 10px;
+        }
+        button {
+            padding: 10px;
+            margin: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Визуализация Растровых Алгоритмов</h1>
+
+<div class="controls">
+    <button onclick="drawLineStepByStep()">Пошаговый алгоритм</button>
+    <button onclick="drawLineDDA()">Алгоритм ЦДА</button>
+    <button onclick="drawLineBresenham()">Алгоритм Брезенхема (отрезок)</button>
+    <button onclick="drawCircleBresenham()">Алгоритм Брезенхема (окружность)</button>
+    <button onclick="drawCastlePitway()">Алгоритм Кастла-Питвея</button>
+    <button onclick="drawAntiAliasedLine()">Сглаженная линия</button>
+</div>
+
+<canvas id="canvas" width="500" height="500"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    function clearCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function drawLineStepByStep() {
+        clearCanvas();
+        ctx.strokeStyle = 'black';
+        ctx.beginPath();
+
+        let x0 = 50, y0 = 50, x1 = 450, y1 = 450;
+        let dx = Math.abs(x1 - x0);
+        let dy = Math.abs(y1 - y0);
+        let sx = (x0 < x1) ? 1 : -1;
+        let sy = (y0 < y1) ? 1 : -1;
+        let err = dx - dy;
+
+        while (true) {
+            ctx.fillRect(x0, y0, 1, 1);
+            if (x0 === x1 && y0 === y1) break;
+            let e2 = 2 * err;
+            if (e2 > -dy) { err -= dy; x0 += sx; }
+            if (e2 < dx) { err += dx; y0 += sy; }
+        }
+    }
+
+    function drawLineDDA() {
+        clearCanvas();
+        ctx.strokeStyle = 'blue';
+
+        let x0 = 50, y0 = 50, x1 = 450, y1 = 450;
+        let dx = x1 - x0;
+        let dy = y1 - y0;
+        let steps = Math.max(Math.abs(dx), Math.abs(dy));
+
+        let xInc = dx / steps;
+        let yInc = dy / steps;
+
+        let x = x0, y = y0;
+        ctx.fillRect(x, y, 1, 1);
+
+        for (let i = 0; i < steps; i++) {
+            x += xInc;
+            y += yInc;
+            ctx.fillRect(Math.round(x), Math.round(y), 1, 1);
+        }
+    }
+
+    function drawLineBresenham() {
+        clearCanvas();
+        let x0 = 50, y0 = 50, x1 = 450, y1 = 450;
+        let dx = Math.abs(x1 - x0);
+        let dy = Math.abs(y1 - y0);
+        let sx = (x0 < x1) ? 1 : -1;
+        let sy = (y0 < y1) ? 1 : -1;
+        let err = dx - dy;
+
+        while (true) {
+            ctx.fillRect(x0, y0, 1, 1);
+            if (x0 === x1 && y0 === y1) break;
+            let e2 = 2 * err;
+            if (e2 > -dy) { err -= dy; x0 += sx; }
+            if (e2 < dx) { err += dx; y0 += sy; }
+        }
+    }
+
+    function drawCircleBresenham() {
+        clearCanvas();
+
+        let xc = 250, yc = 250, r = 100;
+        let x = 0, y = r;
+        let d = 3 - 2 * r;
+
+        while (y >= x) {
+            ctx.fillRect(xc + x, yc + y, 1, 1);
+            ctx.fillRect(xc - x, yc + y, 1, 1);
+            ctx.fillRect(xc + x, yc - y, 1, 1);
+            ctx.fillRect(xc - x, yc - y, 1, 1);
+            ctx.fillRect(xc + y, yc + x, 1, 1);
+            ctx.fillRect(xc - y, yc + x, 1, 1);
+            ctx.fillRect(xc + y, yc - x, 1, 1);
+            ctx.fillRect(xc - y, yc - x, 1, 1);
+
+            x++;
+            if (d > 0) {
+                y--;
+                d = d + 4 * (x - y) + 10;
+            } else {
+                d = d + 4 * x + 6;
+            }
+        }
+    }
+
+    function drawCastlePitway() {
+        clearCanvas();
+        let x0 = 50, y0 = 50, x1 = 450, y1 = 450;
+        let dx = Math.abs(x1 - x0);
+        let dy = Math.abs(y1 - y0);
+        let sx = (x0 < x1) ? 1 : -1;
+        let sy = (y0 < y1) ? 1 : -1;
+        let err = dx - dy;
+        let e2;
+
+        while (true) {
+            ctx.fillRect(x0, y0, 1, 1);
+            if (x0 === x1 && y0 === y1) break;
+            e2 = 2 * err;
+            if (e2 > -dy) { err -= dy; x0 += sx; }
+            if (e2 < dx) { err += dx; y0 += sy; }
+        }
+    }
+
+    function drawAntiAliasedLine() {
+        clearCanvas();
+
+        let x0 = 50, y0 = 50, x1 = 450, y1 = 450;
+        let dx = x1 - x0;
+        let dy = y1 - y0;
+        let steps = Math.max(Math.abs(dx), Math.abs(dy));
+        let xInc = dx / steps;
+        let yInc = dy / steps;
+
+        let x = x0;
+        let y = y0;
+
+        for (let i = 0; i < steps; i++) {
+            let alpha = 1 - (Math.abs(Math.round(x) - x) + Math.abs(Math.round(y) - y)) / 2;
+            ctx.fillStyle = `rgba(0, 0, 255, ${alpha})`;
+            ctx.fillRect(Math.round(x), Math.round(y), 1, 1);
+            x += xInc;
+            y += yInc;
+        }
+    }
+</script>
+
+</body>
+</html>
