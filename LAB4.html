@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сравнение алгоритмов рисования</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        canvas {
+            border: 1px solid black;
+            display: block;
+            margin: 20px auto;
+            background-color: #f9f9f9;
+        }
+        button, input {
+            margin: 5px;
+            padding: 10px 15px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Сравнение алгоритмов рисования линий и окружностей</h1>
+    <p>Введите координаты и нажмите на кнопку, чтобы выполнить выбранный алгоритм.</p>
+    
+    <div>
+        <label for="x0">x0: </label>
+        <input type="number" id="x0" value="0">
+        <label for="y0">y0: </label>
+        <input type="number" id="y0" value="0">
+        <label for="x1">x1: </label>
+        <input type="number" id="x1" value="10">
+        <label for="y1">y1: </label>
+        <input type="number" id="y1" value="5">
+        <label for="radius">Радиус: </label>
+        <input type="number" id="radius" value="5">
+    </div>
+    
+    <canvas id="canvas" width="600" height="600"></canvas>
+    <div>
+        <button onclick="drawStepByStep()">Пошаговый алгоритм</button>
+        <button onclick="drawDDA()">Алгоритм ЦДА</button>
+        <button onclick="drawBresenhamLine()">Алгоритм Брезенхема (отрезок)</button>
+        <button onclick="drawBresenhamCircle()">Алгоритм Брезенхема (окружность)</button>
+        <button onclick="clearCanvas()">Очистить</button>
+        <button onclick="increaseScale()">Увеличить масштаб</button>
+        <button onclick="decreaseScale()">Уменьшить масштаб</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let scale = 20; // Масштаб сетки (размер одной клетки)
+
+        // Установить пиксель с учетом масштаба
+        function setPixel(x, y, color = 'black') {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * scale, y * scale, scale, scale);
+        }
+
+        // Очистить холст
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+        }
+
+        // Увеличить масштаб
+        function increaseScale() {
+            if (scale < 100) {
+                scale += 5;
+                clearCanvas();
+            }
+        }
+
+        // Уменьшить масштаб
+        function decreaseScale() {
+            if (scale > 5) {
+                scale -= 5;
+                clearCanvas();
+            }
+        }
+
+        // Нарисовать сетку и оси координат
+        function drawGrid() {
+            ctx.strokeStyle = '#ddd';
+            ctx.lineWidth = 1;
+
+            // Вертикальные линии
+            for (let x = 0; x <= canvas.width; x += scale) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+
+            // Горизонтальные линии
+            for (let y = 0; y <= canvas.height; y += scale) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // Оси координат
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 2;
+
+            // Ось X
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height / 2);
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+
+            // Ось Y
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+
+            // Подписи координат
+            ctx.fillStyle = 'black';
+            ctx.font = '12px Arial';
+            const centerX = Math.floor(canvas.width / (2 * scale));
+            const centerY = Math.floor(canvas.height / (2 * scale));
+            
+            for (let x = -centerX; x <= centerX; x++) {
+                const [cx, cy] = toCanvasCoords(x, 0);
+                if (x !== 0) {
+                    ctx.fillText(x, cx * scale + 2, canvas.height / 2 + 12);
+                }
+            }
+            for (let y = -centerY; y <= centerY; y++) {
+                const [cx, cy] = toCanvasCoords(0, y);
+                if (y !== 0) {
+                    ctx.fillText(y, canvas.width / 2 + 5, cy * scale - 2);
+                }
+            }
+
+            // Удалено отображение текста "Центр (0, 0)"
+            ctx.fillText(`Масштаб: 1 клетка = ${scale} пикселей`, 10, canvas.height - 10);
+        }
+
+        // Преобразование координат
+        function toCanvasCoords(x, y) {
+            const cx = Math.floor(canvas.width / (2 * scale));
+            const cy = Math.floor(canvas.height / (2 * scale));
+            return [cx + x, cy - y];
+        }
+
+        // Получение координат из полей ввода
+        function getCoordinates() {
+            const x0 = parseInt(document.getElementById('x0').value);
+            const y0 = parseInt(document.getElementById('y0').value);
+            const x1 = parseInt(document.getElementById('x1').value);
+            const y1 = parseInt(document.getElementById('y1').value);
+            return { x0, y0, x1, y1 };
+        }
+
+        // Отображение координат точки
+        function drawCoordinates(x, y, color = 'black') {
+            const [cx, cy] = toCanvasCoords(x, y);
+            ctx.fillStyle = color;
+            ctx.font = '12px Arial';
+            ctx.fillText(`(${x}, ${y})`, cx * scale + 5, cy * scale - 5);
+        }
+
+        // Пошаговый алгоритм
+        function drawStepByStep() {
+            clearCanvas();
+            const { x0, y0, x1, y1 } = getCoordinates();
+            let dx = x1 - x0;
+            let dy = y1 - y0;
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+                let step = dx > 0 ? 1 : -1;
+                let y = y0;
+                for (let x = x0; x !== x1 + step; x += step) {
+                    const [cx, cy] = toCanvasCoords(x, Math.floor(y));
+                    setPixel(cx, cy, 'red');
+                    y += dy / Math.abs(dx);
+                }
+            } else {
+                let step = dy > 0 ? 1 : -1;
+                let x = x0;
+                for (let y = y0; y !== y1 + step; y += step) {
+                    const [cx, cy] = toCanvasCoords(Math.floor(x), y);
+                    setPixel(cx, cy, 'red');
+                    x += dx / Math.abs(dy);
+                }
+            }
+
+            drawCoordinates(x0, y0, 'red');
+            drawCoordinates(x1, y1, 'red');
+        }
+
+        // Алгоритм ЦДА
+        function drawDDA() {
+            clearCanvas();
+            const { x0, y0, x1, y1 } = getCoordinates();
+            let dx = x1 - x0;
+            let dy = y1 - y0;
+            let steps = Math.max(Math.abs(dx), Math.abs(dy));
+            let xIncrement = dx / steps;
+            let yIncrement = dy / steps;
+
+            let x = x0;
+            let y = y0;
+            for (let i = 0; i <= steps; i++) {
+                const [cx, cy] = toCanvasCoords(Math.round(x), Math.round(y));
+                setPixel(cx, cy, 'blue');
+                x += xIncrement;
+                y += yIncrement;
+            }
+
+            drawCoordinates(x0, y0, 'blue');
+            drawCoordinates(x1, y1, 'blue');
+        }
+
+        // Алгоритм Брезенхема (отрезок, рисуется только конечная точка)
+function drawBresenhamLine() {
+    clearCanvas();
+    const { x0, y0, x1, y1 } = getCoordinates();
+
+    let dx = Math.abs(x1 - x0);
+    let dy = Math.abs(y1 - y0);
+    let sx = x0 < x1 ? 1 : -1;
+    let sy = y0 < y1 ? 1 : -1;
+    let err = dx - dy;
+
+    let x = x0;
+    let y = y0;
+
+    // Основной цикл алгоритма Брезенхема
+    while (true) {
+        if (x === x1 && y === y1) {
+            const [cx, cy] = toCanvasCoords(x, y);
+            setPixel(cx, cy, 'green'); // Рисуем только конечную точку
+            break;
+        }
+        let e2 = 2 * err;
+        if (e2 > -dy) {
+            err -= dy;
+            x += sx;
+        }
+        if (e2 < dx) {
+            err += dx;
+            y += sy;
+        }
+    }
+
+    // Отображение координат конечной точки
+    drawCoordinates(x1, y1, 'green');
+        }
+
+        // Алгоритм Брезенхема (окружность)
+        function drawBresenhamCircle() {
+            clearCanvas();
+            const { x0, y0 } = getCoordinates();
+            const r = parseInt(document.getElementById('radius').value);
+
+            let x = 0;
+            let y = r;
+            let d = 3 - 2 * r;
+
+            function drawCirclePoints(xc, yc, x, y) {
+                const points = [
+                    [xc + x, yc + y],
+                    [xc - x, yc + y],
+                    [xc + x, yc - y],
+                    [xc - x, yc - y],
+                    [xc + y, yc + x],
+                    [xc - y, yc + x],
+                    [xc + y, yc - x],
+                    [xc - y, yc - x]
+                ];
+                points.forEach(([px, py]) => {
+                    const [cx, cy] = toCanvasCoords(px, py);
+                    setPixel(cx, cy, 'purple');
+                });
+            }
+
+            while (y >= x) {
+                drawCirclePoints(x0, y0, x, y);
+                x++;
+                if (d > 0) {
+                    y--;
+                    d = d + 4 * (x - y) + 10;
+                } else {
+                    d = d + 4 * x + 6;
+                }
+            }
+
+            drawCoordinates(x0, y0, 'purple');
+            ctx.fillStyle = 'purple';
+            ctx.fillText(`Радиус: ${r}`, (x0 + 1) * scale, (y0 - 1) * scale);
+        }
+
+        // Инициализация сетки при загрузке
+        drawGrid();
+    </script>
+</body>
+</html>
